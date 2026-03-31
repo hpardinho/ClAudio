@@ -1,0 +1,80 @@
+# Ambiente Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Ambientes Virtuais (VENV)
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Variáveis Embebidas e Chaves Sensíveis (IMPORTANTÍSSIMO)
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Módulo PyInstaller e Compilações Windows
+*.spec
+*.manifest
+*.log
+ClAudio.exe
+
+# Pastas de Memória e Dados (SQLite Quotation)
+# Ignorado pois a cota de uso do LLM e Tokens é Pessoal, para não sobreescrever a de Colaboradores.
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.txt
+
+# Logs e Restos de Execução do Kiosk Chromium
+claudio_chrome_profile/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# Chaves Secretas e API Keys Rigorosas
+secrets.json
+*.token
+*.key
+
+# Pastas de IDEs e Editores
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+# IDEs e Ferramentas (VSCode, PyCharm)
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
