@@ -49,7 +49,13 @@ Para garantir o rigoroso controle financeiro do usuário e impedir a exaustão d
 Diga a palavra de ativação: "Cláudio, abra ..."
 
 ---
+
 Desenvolvido sob as diretrizes de Clean Architecture, priorizando a estabilidade, segurança modular e a modernidade estética em sistemas nativos de IA.
 
 ---
+
 Desenvolvido por Henrique Santana Pardinho | Open Source Tool
+
+---
+
+https://github.com/user-attachments/assets/423a7c6e-cd7c-4ba4-a991-7f0a5edca8a5
