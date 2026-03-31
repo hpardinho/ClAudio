@@ -50,3 +50,6 @@ Diga a palavra de ativação: "Cláudio, abra ..."
 
 ---
 Desenvolvido sob as diretrizes de Clean Architecture, priorizando a estabilidade, segurança modular e a modernidade estética em sistemas nativos de IA.
+
+---
+Desenvolvido por Henrique Santana Pardinho | Open Source Tool
