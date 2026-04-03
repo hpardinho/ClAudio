@@ -57,7 +57,17 @@ def _handle_browser_message(user_text: str) -> None:
         response = ask_gemini(user_text)
     except RuntimeError as err:
         logger.error("Erro: %s", err)
-        gui_bridge.send("error", transcript="Erro ao processar.")
+        # Fallback Graceful: em vez de travar no state 'error', avisa o usuário falando
+        # e o sistema UI retornará automaticamente para 'idle', permitindo uso de bypass.
+        from src.brain import get_daily_interactions
+        msg_erro = "Cota de inteligência atingida. Meus comandos básicos continuam operando."
+        gui_bridge.send(
+            "speaking", 
+            transcript=msg_erro, 
+            message=msg_erro, 
+            interactions=get_daily_interactions(),
+            role="claudio"
+        )
         return
 
     from src.brain import get_daily_interactions
