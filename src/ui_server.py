@@ -22,13 +22,20 @@ _browser_process = None
 
 
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
-    """Handler HTTP que não imprime logs no console."""
+    """Handler HTTP que não imprime logs no console e IMPEDE cache."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(UI_DIR), **kwargs)
 
     def log_message(self, format, *args):
         pass  # Silencia os logs do HTTP server
+
+    def end_headers(self):
+        # Força o Chromium a NUNCA cachear os arquivos da UI (JS/CSS/HTML)
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
 
 
 def start() -> int:

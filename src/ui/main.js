@@ -61,14 +61,7 @@
       return text.substring(idx + 7).replace(/^[,!?\s]+/, '').trim();
     }
 
-    function startPassiveListening() {
-      if (!recognition || state === 'thinking' || state === 'speaking') return;
-      listenMode = 'passive';
-      hasSent = false;
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      try { recognition.start(); } catch (e) { }
-    }
+    // Microfone desligado por padrão. Só ativa ao clicar no orb (Push-to-Talk).
 
     if (!SpeechRecognition) {
       document.getElementById('unsupported').style.display = 'block';
@@ -77,7 +70,7 @@
       recognition.lang = 'pt-BR';
 
       recognition.onstart = () => {
-        if (listenMode === 'active') applyState('listening');
+        applyState('listening');
       };
 
       recognition.onresult = (event) => {
@@ -89,32 +82,7 @@
         }
         const currentText = finalText || interim;
 
-        if (listenMode === 'passive') {
-          if (containsWakeWord(currentText)) {
-            listenMode = 'active';
-            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'wake_word' }));
-            applyState('wake');
-            showTranscript('Pode falar...');
-            if (finalText) {
-              const q = extractQuestion(finalText);
-              if (q.length > 2) {
-                hasSent = true; listenMode = 'off';
-                recognition.stop();
-                const qClean = q.toLowerCase().replace(/[^a-z0-9áéíóúâêîôûãõç]/g, '');
-                if (qClean === 'cancelar' || qClean === 'cancela') {
-                  showTranscript('Solicitação cancelada.');
-                  applyState('speaking');
-                  speakText('Solicitação cancelada.');
-                  return;
-                }
-                sendToBackend(q);
-                return;
-              }
-              applyState('listening');
-            }
-          }
-          return;
-        }
+        // Modo passivo removido — microfone só liga via clique no orb
 
         if (listenMode === 'active') {
           showTranscript(currentText);
@@ -154,7 +122,6 @@
                 sendToBackend(q);
               } else {
                  applyState('idle');
-                 setTimeout(startPassiveListening, 500);
               }
             }
           }, 1500);
@@ -163,18 +130,17 @@
 
       recognition.onerror = (event) => {
         if (event.error === 'no-speech' && listenMode === 'active') {
-          showTranscript('Não ouvi nada. Diga "Ei, Cláudio".');
+          showTranscript('Não ouvi nada. Clique no orb para tentar novamente.');
         }
-        setTimeout(() => { if (listenMode !== 'off') startPassiveListening(); }, 1000);
+        listenMode = 'off';
+        applyState('idle');
       };
 
       recognition.onend = () => {
         if (listenMode === 'active' && !hasSent) {
           applyState('idle');
-          setTimeout(startPassiveListening, 500);
-        } else if (listenMode === 'passive') {
-          setTimeout(startPassiveListening, 500);
         }
+        // Mic desliga ao terminar — só religa com novo clique no orb
       };
     }
 
@@ -213,7 +179,7 @@
       clearTimeout(speakTimeout);
       speakTimeout = null;
       applyState('idle');
-      setTimeout(startPassiveListening, 600);
+      // Mic permanece desligado até o próximo clique no orb
     }
 
     function speakText(text) {
@@ -256,16 +222,18 @@
       if (!recognition || state === 'thinking') return;
       if (state === 'speaking') {
         if ('speechSynthesis' in window) speechSynthesis.cancel();
-        applyState('idle'); setTimeout(startPassiveListening, 300);
+        applyState('idle');
         return;
       }
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         applyState('error'); showTranscript('Servidor não conectado.');
         setTimeout(() => applyState('idle'), 2000); return;
       }
-      if (listenMode === 'passive') { try { recognition.stop(); } catch (e) { } }
+      // Para qualquer escuta anterior antes de iniciar nova
+      try { recognition.stop(); } catch (e) { }
       setTimeout(() => {
         listenMode = 'active'; hasSent = false;
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'wake_word' }));
         recognition.continuous = false; recognition.interimResults = true;
         try { recognition.start(); } catch (e) { }
       }, 250);
@@ -326,7 +294,7 @@
         ws = new WebSocket('ws://localhost:8765');
         ws.onopen = () => {
           wsDot.className = 'dot connected'; wsLabel.textContent = 'conectado';
-          setTimeout(startPassiveListening, 500);
+          // Mic desligado até o clique no orb (Push-to-Talk)
           startResetTimer();
         };
         ws.onmessage = (e) => {
