@@ -23,6 +23,11 @@ Tendo em vista as barreiras protetivas do kernel do Windows contra alteração a
 ### Camada de Persistência com SQLite (Monitoramento de Quota)
 Para garantir o rigoroso controle financeiro do usuário e impedir a exaustão de limites tarifários de APIs Cloud (Dev Tiers), o sistema acompanha a contagem diária via banco SQLite no AppData local. Bloqueios cronológicos controlam dinamicamente a cota por IP e limitação por timestamps com resets programados.
 
+### Atualizações de Arquitetura Recentes
+* **Desacoplamento Frontend:** Modularização do cliente Web (`index.html`), isolando totalmente lógicas assíncronas em arquivos dedicados (`main.js`) e parâmetros estéticos em cascata (`styles.css`), modernizando a arquitetura.
+* **Escrita Nativa via SendInput e Bypass System:** Substituição completa de métodos de automação simulada de interface (`pyautogui`, clipboards) por injeção atômica por sinais Unicode da API de baixo nível do Windows (`ctypes.SendInput`). Impede totalmente falhas de layouts de teclado com acentos latinos. 
+* **Focus Management (AttachThreadInput):** Extensão do controle de janelas com o uso da mecânica primária de Threads do Windows, aposentando hacks fantasmas de tecla (ALT). Permite roubar e ceder foco em background nativamente e livre de glitches.
+
 ---
 
 ## Como Executar Localmente

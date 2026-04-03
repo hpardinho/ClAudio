@@ -1,0 +1,413 @@
+*,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0b0b0c;
+      --border: rgba(255, 255, 255, 0.12);
+      --border-hl: rgba(255, 255, 255, 0.35);
+      --text: #ffffff;
+      --muted: #a1a1aa;
+      --accent: #ffffff;
+      --danger: #ff8a9f;
+    }
+
+    body {
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Sora', sans-serif;
+      color: var(--text);
+      overflow: hidden;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 420px;
+      gap: 32px;
+    }
+
+    .top-panel {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      z-index: 10;
+      cursor: default;
+    }
+
+    .ws-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.4s;
+    }
+
+    .dot.connected {
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+
+    .dot.error {
+      background: var(--danger);
+    }
+
+    .quota-info {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      backdrop-filter: blur(4px);
+      text-align: right;
+      transition: opacity 0.3s;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+    }
+
+    .quota-info span {
+      color: var(--text);
+      font-weight: 400;
+    }
+
+    .quota-timer {
+      margin-top: 4px;
+      font-size: 9px;
+      opacity: 0.6;
+    }
+
+    .close-btn {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 100;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .close-btn:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: rgba(207, 102, 121, 0.05);
+      transform: scale(1.05);
+    }
+
+    .core-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+
+    .core-wrap:hover {
+      transform: scale(1.02);
+    }
+
+    .core-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      transition: all 0.5s ease;
+      opacity: 0.5;
+    }
+
+    .r1 {
+      width: 60px;
+      height: 60px;
+    }
+
+    .r2 {
+      width: 90px;
+      height: 90px;
+      border-style: dashed;
+      opacity: 0.3;
+    }
+
+    .r3 {
+      width: 120px;
+      height: 120px;
+    }
+
+    .core-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: all 0.4s ease;
+      z-index: 2;
+    }
+
+    /* States Automation CSS */
+    .s-idle .r2 {
+      animation: rotate 20s linear infinite;
+    }
+
+    .s-wake .core-dot {
+      background: var(--accent);
+      transform: scale(1.5);
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+    }
+
+    .s-wake .r1 {
+      transform: scale(1.1);
+      border-color: var(--border-hl);
+    }
+
+    .s-listening .core-dot {
+      background: var(--accent);
+      animation: pulse 1.2s infinite alternate ease-in-out;
+    }
+
+    .s-listening .core-ring {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .s-listening .r2 {
+      animation: rotate 8s linear infinite reverse;
+    }
+
+    .s-thinking .core-dot {
+      background: #999;
+      animation: blink 1s infinite;
+    }
+
+    .s-speaking .core-dot {
+      background: var(--text);
+    }
+
+    .s-speaking .r1 {
+      animation: soundwave 1s infinite alternate ease-in-out;
+      border-color: var(--border-hl);
+    }
+
+    .s-speaking .r3 {
+      animation: soundwave 1s infinite alternate-reverse ease-in-out;
+      opacity: 0.8;
+    }
+
+    .s-error .core-dot {
+      background: var(--danger);
+      box-shadow: 0 0 10px rgba(207, 102, 121, 0.3);
+    }
+
+    @keyframes rotate {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulse {
+      from {
+        opacity: 0.5;
+        transform: scale(0.8);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1.6);
+      }
+    }
+
+    @keyframes soundwave {
+      from {
+        transform: scale(0.95);
+      }
+
+      to {
+        transform: scale(1.15);
+      }
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 0.2;
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.2);
+      }
+    }
+
+    .status-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      min-height: 44px;
+      width: 100%;
+    }
+
+    .status-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      transition: all 0.4s ease;
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .status-badge.active {
+      color: var(--text);
+      border-color: var(--border-hl);
+    }
+
+    .transcript {
+      font-size: 12px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.5;
+      text-align: center;
+      max-width: 85%;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      min-height: 18px;
+    }
+
+    .transcript.show {
+      opacity: 1;
+      transform: translateY(0);
+      color: var(--text);
+    }
+
+    .history {
+      width: 100%;
+      max-width: 400px;
+      height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 0 20px 20px 20px;
+      scrollbar-width: none;
+    }
+
+    .history::-webkit-scrollbar {
+      display: none;
+    }
+
+    .msg {
+      font-size: 11px;
+      font-weight: 300;
+      line-height: 1.6;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      max-width: 90%;
+      animation: slideup 0.4s ease forwards;
+      opacity: 0;
+      transform: translateY(8px);
+      word-wrap: break-word;
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: transparent;
+      color: #dfdfdf;
+      border-style: dashed;
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .msg.assistant {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    @keyframes slideup {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hint {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 0.5;
+      position: absolute;
+      bottom: 20px;
+      transition: opacity 0.3s;
+    }
+
+    .hint.hidden {
+      opacity: 0;
+    }
+
+    .unsupported {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(207, 102, 121, 0.1);
+      border-bottom: 1px solid var(--danger);
+      color: var(--danger);
+      font-size: 11px;
+      text-align: center;
+      padding: 8px;
+      font-family: 'DM Mono', monospace;
+      z-index: 1000;
+      display: none;
+    }
