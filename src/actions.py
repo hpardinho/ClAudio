@@ -148,14 +148,14 @@ def try_local_bypass(user_text: str) -> tuple[str, str] | None:
         "calculadora": ("ACTION:abrir_app:calc", "Abrindo a calculadora."),
         "arquivos": ("ACTION:abrir_pasta:", "Abrindo o explorador de arquivos."),
         "explorador de arquivos": ("ACTION:abrir_pasta:", "Abrindo o explorador de arquivos."),
-        "photoshop": ("ACTION:abrir_app:photoshop", "Abrindo o Adobe Photoshop."),
-        "after effects": ("ACTION:abrir_app:afterfx", "Iniciando o After Effects."),
+        "photoshop": ("ACTION:abrir_app:photoshop.exe", "Abrindo o Adobe Photoshop."),
+        "after effects": ("ACTION:abrir_app:afterfx.exe", "Iniciando o After Effects."),
         "media encoder": ("ACTION:abrir_app:\"adobe media encoder\"", "Abrindo o Media Encoder."),
         "steam": ("ACTION:abrir_pasta:steam://open/main", "Iniciando a Steam."),
         "valorant": ("ACTION:abrir_app_admin:\"C:\\Riot Games\\Riot Client\\RiotClientServices.exe\" --launch-product=valorant --launch-patchline=live", "Iniciando o Riot Client para Valorant."),
         "navegador": ("ACTION:abrir_navegador", "Abrindo o navegador padrão."),
         "spotify": ("ACTION:abrir_spotify", "Iniciando o Spotify."),
-        "bloco de notas": ("ACTION:abrir_app:notepad", "Abrindo o bloco de notas."),
+        "bloco de notas": ("ACTION:abrir_app:notepad.exe", "Abrindo o bloco de notas."),
         "cmd como administrador": ("ACTION:abrir_app_admin:cmd.exe", "Iniciando Prompt de Comando como Administrador."),
         "cmd como admin": ("ACTION:abrir_app_admin:cmd.exe", "Iniciando Prompt de Comando como Administrador."),
         "cmd": ("ACTION:abrir_app:cmd.exe", "Iniciando Prompt de Comando."),
@@ -247,10 +247,22 @@ def try_execute_action(response: str) -> bool:
             # Sanitização rigorosa (mitigação contra OS Command Injections)
             import re
             seguro_app = re.sub(r'[&|;<>^\(\)]', '', app).strip()
-            # Execução baseada em subprocess de forma isolada do interpretador bash global
-            subprocess.Popen(["cmd.exe", "/c", "start", '""', seguro_app], shell=False)
+            
+            # Garante que apps comuns não sejam confundidos com pastas relativas pelo shell do Windows
+            app_lower = seguro_app.lower()
+            if app_lower in ("notepad", "calc", "chrome", "winword", "excel", "powerpnt", "photoshop", "afterfx", "cmd", "powershell"):
+                seguro_app = f"{app_lower}.exe"
+                
+            # Os.startfile é a APi nativa do windows para o ShellExecute de duplo clique, ignorando bugs de escopo do CMD
+            import os
+            try:
+                os.startfile(seguro_app)
+                logger.info("Aplicativo lançado com segurança via startfile: %s", seguro_app)
+            except Exception as e:
+                logger.warning("Erro startfile %s: %s. Tentando via Popen...", seguro_app, e)
+                subprocess.Popen(seguro_app, shell=True)
+                
             just_opened_app = True
-            logger.info("Aplicativo lançado com segurança: %s", seguro_app)
 
         elif raw_action.startswith("abrir_app_admin:"):
             app = raw_action.split(":", 1)[1].strip()
