@@ -66,15 +66,10 @@ secrets.json
 .vscode/
 *.swp
 *.swo
+.agents/
+.gemini/
 
 # Arquivos do Sistema Operacional
 .DS_Store
 Thumbs.db
 desktop.ini
-# IDEs e Ferramentas (VSCode, PyCharm)
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
