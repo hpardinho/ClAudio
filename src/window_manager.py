@@ -6,8 +6,13 @@ Impede o acoplamento excessivo de chamadas de kernel (ctypes) nas raízes de rot
 import sys
 import time
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
+
+# Armazena o HWND da janela que o usuário estava usando ANTES do ClAudio roubar o foco.
+# Isso garante que ao digitar, o foco volte pra janela correta (Word, Chrome, VS Code etc).
+_last_user_hwnd = None
 
 def is_windows() -> bool:
     return sys.platform == "win32"
@@ -39,49 +44,122 @@ def _find_claudio_hwnd():
     user32.EnumWindows(WNDENUMPROC(enum_cb), 0)
     return target_hwnd
 
-def bring_assistant_to_front() -> None:
-    """Procura pelo título exato da janela do ClAudio e a traz para a frente (des-minimiza)."""
+def save_user_window() -> None:
+    """Salva o HWND da janela que está em primeiro plano AGORA (antes do ClAudio roubar o foco)."""
+    global _last_user_hwnd
     if not is_windows():
         return
-        
     try:
         import ctypes
         user32 = ctypes.windll.user32
+        fg = user32.GetForegroundWindow()
+        claudio_hwnd = _find_claudio_hwnd()
+        # Só salva se NÃO for a própria janela do ClAudio
+        if fg and fg != claudio_hwnd:
+            _last_user_hwnd = fg
+            # Log do título para debug
+            length = user32.GetWindowTextLengthW(fg)
+            if length > 0:
+                buff = ctypes.create_unicode_buffer(length + 1)
+                user32.GetWindowTextW(fg, buff, length + 1)
+                logger.info("Janela do usuário memorizada: '%s' (hwnd=%s)", buff.value[:60], fg)
+    except Exception as e:
+        logger.error("Falha ao salvar janela do usuário: %s", e)
+
+def bring_assistant_to_front() -> None:
+    """Procura pelo título exato da janela do ClAudio e a traz para a frente (des-minimiza)."""
+    def _bring_to_front_thread():
+        # Aguarda uns milissegundos para o Eel/Chrome criar efetivamente a janela
+        time.sleep(0.3)
         hwnd = _find_claudio_hwnd()
-        
-        if hwnd:
-            # 9 = SW_RESTORE
-            user32.ShowWindow(hwnd, 9)
+        if not hwnd:
+            logger.warning("Não foi possível achar a janela do ClAudio para forçar o foco.")
+            return
+
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
             
-            # Hack de teclado fantasma ALT para simular interesse físico do usuário na janela,
-            # forçando o Foco Ativo do Windows Bypassing o Anti-Spam Popup.
-            user32.keybd_event(0x12, 0, 0, 0) # Pressiona ALT (VK_MENU)
-            user32.SetForegroundWindow(hwnd)
-            user32.BringWindowToTop(hwnd)
-            user32.keybd_event(0x12, 0, 2, 0) # Solta ALT
+            # Se a janela estiver minimizada, restaura
+            user32.ShowWindow(hwnd, 9)
+
+            # Método oficial do Windows: AttachThreadInput no lugar do Hack do ALT
+            fg_hwnd = user32.GetForegroundWindow()
+            if fg_hwnd and fg_hwnd != hwnd:
+                fg_thread = user32.GetWindowThreadProcessId(fg_hwnd, None)
+                my_thread = kernel32.GetCurrentThreadId()
+                
+                if fg_thread != my_thread and fg_thread != 0:
+                    user32.AttachThreadInput(my_thread, fg_thread, True)
+                    user32.SetForegroundWindow(hwnd)
+                    user32.BringWindowToTop(hwnd)
+                    user32.AttachThreadInput(my_thread, fg_thread, False)
+                else:
+                    user32.SetForegroundWindow(hwnd)
+                    user32.BringWindowToTop(hwnd)
+            else:
+                user32.SetForegroundWindow(hwnd)
+                user32.BringWindowToTop(hwnd)
             
             logger.info("Widget resgatado pro centro da tela com sucesso!")
-        else:
-            logger.debug("Janela não encontrada pelo nome exato: '%s'", title)
-    except Exception as e:
-        logger.error("Falha na API do Windows: %s", e)
+        except Exception as e:
+            logger.error("Falha detalhada ao forçar o ClAudio para a frente: %s", e)
+
+    if not is_windows():
+        return
+        
+    # ANTES de trazer o ClAudio, salva a janela atual do usuário
+    save_user_window()
+    
+    # Executa em thread separada para não travar o loop principal do servidor
+    threading.Thread(target=_bring_to_front_thread, daemon=True).start()
 
 def restore_focus_for_typing() -> None:
     """
-    Minimiza ou joga o ClAudio para trás rapidamente para devolver o foco 
-    ativo para o programa anterior do usuário (necessário para o pyautogui escrever no app base).
+    Restaura o foco para a janela EXATA que o usuário estava usando antes de chamar o ClAudio.
+    Isso é crítico para que o pyautogui.write() envie as teclas para o app correto (Word, Chrome, etc).
     """
+    global _last_user_hwnd
     if not is_windows():
         return
         
     try:
         import ctypes
         user32 = ctypes.windll.user32
-        hwnd = _find_claudio_hwnd()
-        if hwnd:
-            # 6 = SW_MINIMIZE (Minimiza, transferindo o foco nativamente)
-            user32.ShowWindow(hwnd, 6)
+        
+        # 1. Minimiza o ClAudio para ele sair do caminho
+        claudio_hwnd = _find_claudio_hwnd()
+        if claudio_hwnd:
+            user32.ShowWindow(claudio_hwnd, 6)  # SW_MINIMIZE
+            time.sleep(0.15)
+        
+        # 2. Restaura o foco para a janela EXATA que o usuário estava
+        if _last_user_hwnd and user32.IsWindow(_last_user_hwnd):
+            user32.ShowWindow(_last_user_hwnd, 9)  # SW_RESTORE
+            
+            # REMOVIDO HACK DO ALT! (Ele travava o teclado do usuário)
+            # Método oficial do Windows: Anexar a thread de input para permitir a troca de foco
+            kernel32 = ctypes.windll.kernel32
+            fg_hwnd = user32.GetForegroundWindow()
+            if fg_hwnd and fg_hwnd != _last_user_hwnd:
+                fg_thread = user32.GetWindowThreadProcessId(fg_hwnd, None)
+                my_thread = kernel32.GetCurrentThreadId()
+                
+                if fg_thread != my_thread and fg_thread != 0:
+                    user32.AttachThreadInput(my_thread, fg_thread, True)
+                    user32.SetForegroundWindow(_last_user_hwnd)
+                    user32.BringWindowToTop(_last_user_hwnd)
+                    user32.AttachThreadInput(my_thread, fg_thread, False)
+                else:
+                    user32.SetForegroundWindow(_last_user_hwnd)
+                    user32.BringWindowToTop(_last_user_hwnd)
+            else:
+                user32.SetForegroundWindow(_last_user_hwnd)
+                user32.BringWindowToTop(_last_user_hwnd)
+            
             time.sleep(0.3)
+            logger.warning("Sem janela memorizada. Foco delegado ao Windows.")
     except Exception as e:
         logger.error("Falha ao restaurar o foco para a digitação remota: %s", e)
 

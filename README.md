@@ -23,6 +23,16 @@ Tendo em vista as barreiras protetivas do kernel do Windows contra alteração a
 ### Camada de Persistência com SQLite (Monitoramento de Quota)
 Para garantir o rigoroso controle financeiro do usuário e impedir a exaustão de limites tarifários de APIs Cloud (Dev Tiers), o sistema acompanha a contagem diária via banco SQLite no AppData local. Bloqueios cronológicos controlam dinamicamente a cota por IP e limitação por timestamps com resets programados.
 
+### Atualizações de Arquitetura Recentes
+* **Desacoplamento Frontend:** Modularização do cliente Web (`index.html`), isolando totalmente lógicas assíncronas em arquivos dedicados (`main.js`) e parâmetros estéticos em cascata (`styles.css`), modernizando a arquitetura.
+* **Escrita Nativa via SendInput e Bypass System:** Substituição completa de métodos de automação simulada de interface (`pyautogui`, clipboards) por injeção atômica por sinais Unicode da API de baixo nível do Windows (`ctypes.SendInput`). Impede totalmente falhas de layouts de teclado com acentos latinos. 
+* **Focus Management (AttachThreadInput):** Extensão do controle de janelas com o uso da mecânica primária de Threads do Windows, aposentando hacks fantasmas de tecla (ALT). Permite roubar e ceder foco em background nativamente e livre de glitches.
+* **Governança de Erros e Recuperação Global:** Em caso de exaustão térmica de APIs em nuvem (Resource Exhausted Token Limit), o Client Kiosk executa uma recuperação suave automática. O assistente informa vocalmente o final da cota ao usuário e retrocede ao modo ocioso (`idle`), não interrompendo os sistemas locais de acionamento rápido (Bypass).
+* **Launch Control (Executáveis e Atalhos):** Migração das aberturas arbitrárias do escopo do Terminal Python (subprocess/cmd.exe) para o núcleo físico Desktop Core (`os.startfile`). Aprimora substancialmente a interoperabilidade e anula incidentes estruturais de leitura de falsos diretórios locais pelo shell de retaguarda do sistema.
+* **Ultra-Standby Hands-Free (Wake Word):** Implementação de escuta passiva contínua baseada em ciclos de reconhecimento. O assistente permanece em guarda (Standby) sem necessidade de ativação por clique, reagindo instantaneamente ao nome "Cláudio" em qualquer estado operacional.
+* **Interrupção Dinâmica e Hot-Swap:** Capacidade de interromper o assistente durante a fala (TTS) ou processamento (Thinking). O sistema descarta respostas obsoletas e prioriza o novo comando vocal, garantindo fluidez conversacional.
+* **Sleep Word (Fluxo de Cancelamento):** Introdução do comando "Cancelar" como gatilho de hibernação imediata. O comando interrompe a sessão ativa e devolve o assistente ao modo Standby sem latência.
+
 ---
 
 ## Como Executar Localmente
@@ -46,7 +56,18 @@ Para garantir o rigoroso controle financeiro do usuário e impedir a exaustão d
 6. Inicie a execução principal inicializando o módulo:
    `python -m src`
 
-Diga a palavra de ativação: "Cláudio, abra ..."
+### Comandos do Sistema
+
+O ClAudio reconhece uma série de comandos determinísticos e contextuais. Abaixo estão os principais padrões:
+
+| Comando | Funcionalidade |
+| :--- | :--- |
+| **ClAudio** | Aciona o assistente para realizar tarefas (Wake Word). |
+| **Cancelar / Cancela** | Interrompe a tarefa atual e coloca o assistente em Standby (Sleep Word). |
+| **Fechar** | Realiza o encerramento do software que estiver em foco no momento. |
+| **Abrir [Software]** | Localiza e inicializa o software ou atalho configurado. |
+| **Escreva [Texto]** | Realiza a digitação atômica de textos em campos de input ativos. |
+| **Pesquisar [Termo]** | Realiza buscas rápidas no motor de busca padrão. |
 
 ---
 
